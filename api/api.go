@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"pottogether/api/user"
 	"pottogether/config"
+	"pottogether/internal/auth"
 	"pottogether/pkg/logger"
 	"pottogether/pkg/mariadb"
 	"syscall"
@@ -27,6 +29,8 @@ func API_init(LOG_PATH string) {
 	// Init Logger
 	logger.InitLogger(config.Viper.GetString(LOG_PATH))
 	logger.Log.Info("Logger enabled, log file: " + config.Viper.GetString(LOG_PATH))
+	// Init JWT
+	auth.SetJWTKey()
 	// Connect to MySQL
 	if err = mariadb.Connect_init(); err != nil {
 		logger.Error("Error connecting to mariadb: " + err.Error())
@@ -61,6 +65,10 @@ func Main() {
 	})
 
 	// API Routes
+	userGroup := router.Group("/users")
+	userGroup.POST("/signup", user.Signup)
+	userGroup.POST("/login", user.Login)
+	userGroup.GET("/profile", auth.ValidateToken, user.GetProfile)
 
 	// Start API service
 	srv := &http.Server{
