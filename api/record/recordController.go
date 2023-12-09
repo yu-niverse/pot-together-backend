@@ -13,7 +13,6 @@ type RecordRequest struct {
 	UserID       int  `json:"user_id" binding:"required"`
 	RoomID       int  `json:"room_id" binding:"required"`
 	PotID        int  `json:"pot_id" binding:"required"`
-	TimeInterval *int `json:"time_interval" binding:"required"`
 	IngredientID int  `json:"ingredient_id" binding:"required"`
 	Interrupt    *int `json:"interrupt" binding:"required"`
 	Status       *int `json:"status" binding:"required"`
