@@ -14,7 +14,7 @@ import (
 var jwtSecretKey []byte
 
 type authClaims struct {
-	UserID string `json:"userID"`
+	UserID int `json:"userID"`
 	jwt.StandardClaims
 }
 
@@ -22,7 +22,7 @@ func SetJWTKey() {
 	jwtSecretKey = []byte(config.Viper.GetString("JWT_SECRET_KEY"))
 }
 
-func GenerateToken(userID, email string) (string, error) {
+func GenerateToken(userID int, email string) (string, error) {
 	// Set JWT claims fields
 	expiresAt := time.Now().Add(24 * time.Hour).Unix() // 24 hours
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, authClaims{
@@ -69,7 +69,7 @@ func ValidateToken(c *gin.Context) {
 	}
 	// Check if token is valid -> continue
 	if claims, ok := tokenClaims.Claims.(*authClaims); ok && tokenClaims.Valid {
-		c.Set("UserID", claims.UserID)
+		c.Set("id", claims.UserID)
 		c.Next()
 	} else {
 		c.Abort()
