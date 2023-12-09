@@ -11,7 +11,8 @@ import (
 )
 
 type signUpRequest struct {
-	Avatar int    `json:"avatar" binding:"required"`
+	Avatar *int   `json:"avatar" binding:"required"`
+	Name   string `json:"name" binding:"required"`
 	Email  string `json:"email" binding:"required"`
 	Passwd string `json:"passwd" binding:"required"`
 }
@@ -111,7 +112,7 @@ func GetProfile(c *gin.Context) {
 	r := response.New()
 
 	// Get user info
-	userInfo, err := getProfile(c.MustGet("UserID").(int))
+	userInfo, err := getProfile(c.MustGet("id").(int))
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
 			r.Message = "user not found"
@@ -133,7 +134,7 @@ func GetToday(c *gin.Context) {
 	r := response.New()
 
 	// Get today's record
-	todayRecord, err := getToday(c.MustGet("UserID").(int))
+	todayRecord, err := getToday(c.MustGet("id").(int))
 	if err != nil {
 		r.Message = err.Error()
 		c.JSON(http.StatusInternalServerError, r)
@@ -150,7 +151,7 @@ func GetInvterval(c *gin.Context) {
 	r := response.New()
 
 	// Get interval record
-	intervalRecord, err := getInterval(c.MustGet("UserID").(int))
+	intervalRecord, err := getInterval(c.MustGet("id").(int))
 	if err != nil {
 		r.Message = err.Error()
 		c.JSON(http.StatusInternalServerError, r)

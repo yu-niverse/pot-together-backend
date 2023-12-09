@@ -69,7 +69,7 @@ func ValidateToken(c *gin.Context) {
 	}
 	// Check if token is valid -> continue
 	if claims, ok := tokenClaims.Claims.(*authClaims); ok && tokenClaims.Valid {
-		c.Set("UserID", claims.UserID)
+		c.Set("id", claims.UserID)
 		c.Next()
 	} else {
 		c.Abort()

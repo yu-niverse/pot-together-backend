@@ -9,19 +9,10 @@ import (
 )
 
 type UserInfo struct {
-	ID     int      `json:"id"`
-	Avatar int      `json:"avatar"`
-	Name   string   `json:"name"`
-	Record []Record `json:"record"`
-	Level  int      `json:"level"`
-}
-
-type Record struct {
-	ID           int    `json:"id"`
-	Interval     int    `json:"interval"`
-	Finish_time  string `json:"date"`
-	IngredientID int    `json:"ingredient_id"`
-	Status       int    `json:"status"`
+	ID     int    `json:"id"`
+	Avatar *int   `json:"avatar"`
+	Name   string `json:"name"`
+	Level  int    `json:"level"`
 }
 
 type todayRecord struct {
@@ -64,7 +55,7 @@ func signUp(rr signUpRequest) (int, error) {
 	}
 
 	// Insert into user database
-	query = "INSERT INTO user (avatar, email, password, created_at) VALUES (?, ?, ?, NOW())"
+	query = "INSERT INTO user (avatar, email, password, created_at, level) VALUES (?, ?, ?, NOW(), 1)"
 	result, err := mariadb.DB.Exec(query, rr.Avatar, rr.Email, rr.Passwd)
 	if err != nil {
 		logger.Error("[USER] " + err.Error())
@@ -112,7 +103,6 @@ func login(lr loginRequest) (int, error) {
 
 func getProfile(id int) (UserInfo, error) {
 	var ui UserInfo
-	var recordList []Record
 
 	// Get user info
 	query := "SELECT id, avatar, username, level FROM user WHERE id = ?"
@@ -121,23 +111,6 @@ func getProfile(id int) (UserInfo, error) {
 		logger.Error("[USER] " + err.Error())
 		return ui, err
 	}
-
-	// Get user record
-	query = "SELECT id, time_interval, finish_time, ingredient_id, status FROM record WHERE user_id = ?"
-	rows, err := mariadb.DB.Query(query, id)
-	if err != nil {
-		logger.Error("[USER] " + err.Error())
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var r Record
-		err = rows.Scan(&r.ID, &r.Interval, &r.Finish_time, &r.IngredientID, &r.Status)
-		if err != nil {
-			logger.Error("[USER] " + err.Error())
-		}
-		recordList = append(recordList, r)
-	}
-	ui.Record = recordList
 	return ui, nil
 }
 
@@ -145,7 +118,7 @@ func getToday(id int) ([]todayRecord, error) {
 	var todayList []todayRecord
 
 	// Get user record
-	query := "SELECT id, image FROM record WHERE user_id = ? AND DATE(finish_time) = CURDATE()"
+	query := "SELECT record.id, ingredient.image FROM record INNER JOIN ingredient ON record.ingredient_id = ingredient.id WHERE user_id = ? AND DATE(finish_time) = CURDATE()"
 	rows, err := mariadb.DB.Query(query, id)
 	if err != nil {
 		logger.Error("[USER] " + err.Error())

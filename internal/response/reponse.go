@@ -11,6 +11,10 @@ type SignUpLoginResponse struct {
 	Token string `json:"token"`
 }
 
+type RecordReponse struct {
+	ID int `json:"id"`
+}
+
 func New() *Response {
 	return &Response{
 		IsSuccess: false,

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"pottogether/api/record"
 	"pottogether/api/user"
 	"pottogether/config"
 	"pottogether/internal/auth"
@@ -78,13 +79,19 @@ func Main() {
 	userGroup.GET("/interval", user.GetInvterval)
 
 	// Room Routes
+	RoomGroup := router.Group("/rooms")
+	RoomGroup.GET(":id/records", record.GetRoomRecords)
 
 	// Ingredient Routes
 
 	// Record Routes
+	recordGroup := router.Group("/records")
+	recordGroup.POST("", record.CreateRecord)
+	recordGroup.GET("", record.GetUserRecord)
+	recordGroup.GET("/:id", record.GetRecordDetail)
+	recordGroup.PATCH("/:id", record.UpdateRecord)
 
 	// Pot Routes
-
 
 	// Start API service
 	srv := &http.Server{
