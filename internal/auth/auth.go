@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"pottogether/config"
 	"pottogether/pkg/logger"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,11 +23,12 @@ func SetJWTKey() {
 	jwtSecretKey = []byte(config.Viper.GetString("JWT_SECRET_KEY"))
 }
 
-func GenerateToken(userID, email string) (string, error) {
+func GenerateToken(userID int, email string) (string, error) {
+	IDString := strconv.Itoa(userID)
 	// Set JWT claims fields
 	expiresAt := time.Now().Add(24 * time.Hour).Unix() // 24 hours
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, authClaims{
-		UserID: userID,
+		UserID: IDString,
 		StandardClaims: jwt.StandardClaims{
 			Subject:   email,
 			ExpiresAt: expiresAt,
