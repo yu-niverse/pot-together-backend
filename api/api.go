@@ -64,11 +64,27 @@ func Main() {
 		c.JSON(http.StatusOK, "Healthcheck OK!")
 	})
 
-	// API Routes
+	// Signup and Login
+	router.POST("users/signup", user.Signup)
+	router.POST("users/login", user.Login)
+
+	// Auth middleware for all routes below
+	router.Use(auth.ValidateToken)
+
+	// User Routes
 	userGroup := router.Group("/users")
-	userGroup.POST("/signup", user.Signup)
-	userGroup.POST("/login", user.Login)
-	userGroup.GET("/profile", auth.ValidateToken, user.GetProfile)
+	userGroup.GET("/profile", user.GetProfile)
+	userGroup.GET("/today", user.GetToday)
+	userGroup.GET("/interval", user.GetInvterval)
+
+	// Room Routes
+
+	// Ingredient Routes
+
+	// Record Routes
+
+	// Pot Routes
+
 
 	// Start API service
 	srv := &http.Server{
