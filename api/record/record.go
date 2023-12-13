@@ -33,8 +33,8 @@ type RecordDetail struct {
 
 func createRecord(r RecordRequest) (int, error) {
 	// Insert record
-	query := "INSERT INTO record (user_id, room_id, pot_id, time_interval, ingredient_id, interrupt, status) VALUES (?, ?, ?, ?, ?, ?, ?)"
-	result, err := mariadb.DB.Exec(query, r.UserID, r.RoomID, r.PotID, r.TimeInterval, r.IngredientID, r.Interrupt, r.Status)
+	query := "INSERT INTO record (user_id, room_id, pot_id, ingredient_id, time_interval, interrupt, status) VALUES (?, ?, ?, ?, 0, 0, 0)"
+	result, err := mariadb.DB.Exec(query, r.UserID, r.RoomID, r.PotID, r.IngredientID)
 	if err != nil {
 		logger.Error("[RECORD] " + err.Error())
 		return -1, err
