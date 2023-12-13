@@ -6,7 +6,11 @@ type Response struct {
 	Message   interface{} `json:"message"`
 }
 
-type SignUpLoginResponse struct {
+type SignUpResponse struct {
+	ID int `json:"id"`
+}
+
+type LoginResponse struct {
 	ID    int    `json:"id"`
 	Token string `json:"token"`
 }

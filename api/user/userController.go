@@ -54,15 +54,9 @@ func Signup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, r)
 		return
 	}
-	token, err := auth.GenerateToken(id, signUpRequest.Email)
-	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
-		return
-	}
 
 	r.IsSuccess = true
-	r.Data = response.SignUpLoginResponse{ID: id, Token: token}
+	r.Data = response.SignUpResponse{ID: id}
 	c.JSON(http.StatusCreated, r)
 }
 
@@ -103,7 +97,7 @@ func Login(c *gin.Context) {
 	}
 
 	r.IsSuccess = true
-	r.Data = response.SignUpLoginResponse{ID: id, Token: token}
+	r.Data = response.LoginResponse{ID: id, Token: token}
 	c.JSON(http.StatusOK, r)
 }
 
@@ -126,39 +120,5 @@ func GetProfile(c *gin.Context) {
 
 	r.IsSuccess = true
 	r.Data = userInfo
-	c.JSON(http.StatusOK, r)
-}
-
-func GetToday(c *gin.Context) {
-	// Create response
-	r := response.New()
-
-	// Get today's record
-	todayRecord, err := getToday(c.MustGet("id").(int))
-	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
-		return
-	}
-
-	r.IsSuccess = true
-	r.Data = todayRecord
-	c.JSON(http.StatusOK, r)
-}
-
-func GetInvterval(c *gin.Context) {
-	// Create response
-	r := response.New()
-
-	// Get interval record
-	intervalRecord, err := getInterval(c.MustGet("id").(int))
-	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
-		return
-	}
-
-	r.IsSuccess = true
-	r.Data = intervalRecord
 	c.JSON(http.StatusOK, r)
 }

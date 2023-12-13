@@ -9,19 +9,18 @@ import (
 )
 
 type UserInfo struct {
-	ID     int    `json:"id"`
-	Avatar *int   `json:"avatar"`
-	Name   string `json:"name"`
-	Level  int    `json:"level"`
+	ID        int           `json:"id"`
+	Avatar    *int          `json:"avatar"`
+	Name      string        `json:"name"`
+	Level     int           `json:"level"`
+	TotalTime int           `json:"total_time"`
+	Today     []todayRecord `json:"today"`
+	Week      []int         `json:"week"`
 }
 
 type todayRecord struct {
 	ID    int    `json:"id"`
 	Image string `json:"image"`
-}
-
-type weekInterval struct {
-	Intervals []int `json:"intervals"`
 }
 
 func hashPassword(password string) (string, error) {
@@ -55,8 +54,8 @@ func signUp(rr signUpRequest) (int, error) {
 	}
 
 	// Insert into user database
-	query = "INSERT INTO user (avatar, email, password, created_at, level) VALUES (?, ?, ?, NOW(), 1)"
-	result, err := mariadb.DB.Exec(query, rr.Avatar, rr.Email, rr.Passwd)
+	query = "INSERT INTO user (avatar, email, username, password, created_at, level) VALUES (?, ?, ?, ?, NOW(), 1)"
+	result, err := mariadb.DB.Exec(query, rr.Avatar, rr.Email, rr.Name, rr.Passwd)
 	if err != nil {
 		logger.Error("[USER] " + err.Error())
 		return -1, err
@@ -111,6 +110,29 @@ func getProfile(id int) (UserInfo, error) {
 		logger.Error("[USER] " + err.Error())
 		return ui, err
 	}
+
+	// Get total time
+	query = "SELECT COALESCE(SUM(time_interval), 0) FROM record WHERE user_id = ?"
+	err = mariadb.DB.QueryRow(query, id).Scan(&ui.TotalTime)
+	if err != nil {
+		logger.Error("[USER] " + err.Error())
+		return ui, err
+	}
+
+	// Get today list
+	ui.Today, err = getToday(id)
+	if err != nil {
+		logger.Error("[USER] " + err.Error())
+		return ui, err
+	}
+
+	// Get week interval
+	ui.Week, err = getWeekInterval(id)
+	if err != nil {
+		logger.Error("[USER] " + err.Error())
+		return ui, err
+	}
+
 	return ui, nil
 }
 
@@ -137,8 +159,8 @@ func getToday(id int) ([]todayRecord, error) {
 	return todayList, nil
 }
 
-func getInterval(id int) (weekInterval, error) {
-	var weekInterval weekInterval
+func getWeekInterval(id int) ([]int, error) {
+	var weekInterval []int
 
 	// Go through 7 days and sum up the time_interval
 	for i := 6; i >= 0; i-- {
@@ -149,7 +171,7 @@ func getInterval(id int) (weekInterval, error) {
 			logger.Error("[USER] " + err.Error())
 			return weekInterval, err
 		}
-		weekInterval.Intervals = append(weekInterval.Intervals, sum)
+		weekInterval = append(weekInterval, sum)
 	}
 	return weekInterval, nil
 }

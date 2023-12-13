@@ -75,8 +75,6 @@ func Main() {
 	// User Routes
 	userGroup := router.Group("/users")
 	userGroup.GET("/profile", user.GetProfile)
-	userGroup.GET("/today", user.GetToday)
-	userGroup.GET("/interval", user.GetInvterval)
 
 	// Room Routes
 	RoomGroup := router.Group("/rooms")
