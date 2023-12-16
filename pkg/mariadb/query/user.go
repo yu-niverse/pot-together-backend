@@ -8,7 +8,7 @@ import (
 )
 
 type User struct {
-	ID       int    `json:"id"`
+	ID       int    `json:"userID"`
 	Name     string `json:"name"`
 	Avatar   *int   `json:"avatar"`
 	Email    string `json:"email"`
@@ -16,7 +16,7 @@ type User struct {
 }
 
 type UserProfile struct {
-	ID          int        `json:"id"`
+	ID          int        `json:"userID"`
 	Name        string     `json:"name"`
 	Avatar      *int       `json:"avatar"`
 	CookingTime int        `json:"cookingTime"`
@@ -30,7 +30,7 @@ type userStatus struct {
 }
 
 type UserOverview struct {
-	ID    int           `json:"id"`
+	ID    int           `json:"userID"`
 	Level userLevel     `json:"level"`
 	Today []todayRecord `json:"today"`
 	Week  []dateRecord  `json:"week"`
@@ -182,18 +182,7 @@ func GetOverview(id int) (UserOverview, error) {
 		return result, err
 	}
 	// Get next level
-	query = `
-		SELECT image FROM ingredient
-		WHERE requirement = "level%d"`
-	query = fmt.Sprintf(query, result.Level.Level+1)
-	err = mariadb.DB.QueryRow(query).Scan(&result.Level.Next)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			result.Level.Next = ""
-		} else {
-			return result, err
-		}
-	}
+	result.Level.Next, err = getNextLevel(result.Level.Level)
 	// Get today
 	result.Today, err = getToday(id)
 	if err != nil {
@@ -243,7 +232,7 @@ func getWeekInterval(id int) ([]dateRecord, error) {
 	query := `
 		SELECT 
 			DATE(created_at) AS date,
-			SEC_TO_TIME(SUM(time_interval)) AS total_time
+			SUM(time_interval) AS total_time
 		FROM record
 		WHERE WEEK(created_at) = WEEK(NOW()) AND user_id = ?
 		GROUP BY DATE(created_at);`
@@ -271,7 +260,7 @@ func getMonthInterval(id int) ([]dateRecord, error) {
 	query := `
 		SELECT 
 			DATE(created_at) AS date,
-			SEC_TO_TIME(SUM(time_interval)) AS total_time
+			SUM(time_interval) AS total_time
 		FROM record
 		WHERE MONTH(created_at) = MONTH(NOW()) AND user_id = ?
 		GROUP BY DATE(created_at);`
@@ -292,4 +281,20 @@ func getMonthInterval(id int) ([]dateRecord, error) {
 		records = append(records, record)
 	}
 	return records, nil
+}
+
+func getNextLevel(level int) (string, error) {
+	query := `
+		SELECT image FROM ingredient
+		WHERE requirement = "level%d"`
+	query = fmt.Sprintf(query, level+1)
+	var image string
+	err := mariadb.DB.QueryRow(query).Scan(&image)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return image, nil
 }

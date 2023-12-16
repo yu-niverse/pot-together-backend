@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"pottogether/api/record"
+	"pottogether/api/room"
 	"pottogether/api/user"
 	"pottogether/config"
 	"pottogether/internal/auth"
@@ -79,7 +80,13 @@ func Main() {
 
 	// Room Routes
 	RoomGroup := router.Group("/rooms")
-	RoomGroup.GET(":id/records", record.GetRoomRecords)
+	RoomGroup.POST("", room.CreateRoom)
+	RoomGroup.GET("", room.GetRooms)
+	RoomGroup.GET("/public", room.GetPublicRooms)
+	RoomGroup.GET("/:roomID", room.GetRoomOverview)
+	RoomGroup.POST("/:roomID", room.JoinRoom)
+	RoomGroup.DELETE("/:roomID", room.LeaveRoom)
+	RoomGroup.GET(":roomID/records", room.GetRoomRecords)
 
 	// Ingredient Routes
 
