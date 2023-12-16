@@ -14,7 +14,7 @@ import (
 )
 
 type SignUpRequest struct {
-	Avatar   int    `json:"avatar" binding:"required"`
+	Avatar   *int   `json:"avatar" binding:"required"`
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"passwd" binding:"required"`

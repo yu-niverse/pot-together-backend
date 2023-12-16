@@ -2,6 +2,7 @@ package query
 
 import (
 	"database/sql"
+	"fmt"
 	"pottogether/internal/hash"
 	"pottogether/pkg/mariadb"
 )
@@ -9,7 +10,7 @@ import (
 type User struct {
 	ID       int    `json:"id"`
 	Name     string `json:"name"`
-	Avatar   int    `json:"avatar"`
+	Avatar   *int   `json:"avatar"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -17,7 +18,7 @@ type User struct {
 type UserProfile struct {
 	ID          int        `json:"id"`
 	Name        string     `json:"name"`
-	Avatar      int        `json:"avatar"`
+	Avatar      *int       `json:"avatar"`
 	CookingTime int        `json:"cookingTime"`
 	Status      userStatus `json:"status"`
 	Done        []string   `json:"done"`
@@ -179,6 +180,19 @@ func GetOverview(id int) (UserOverview, error) {
 	err := mariadb.DB.QueryRow(query, id).Scan(&result.ID, &result.Level.Level, &result.Level.TotalTime)
 	if err != nil {
 		return result, err
+	}
+	// Get next level
+	query = `
+		SELECT image FROM ingredient
+		WHERE requirement = "level%d"`
+	query = fmt.Sprintf(query, result.Level.Level+1)
+	err = mariadb.DB.QueryRow(query).Scan(&result.Level.Next)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			result.Level.Next = ""
+		} else {
+			return result, err
+		}
 	}
 	// Get today
 	result.Today, err = getToday(id)
