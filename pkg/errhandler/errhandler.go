@@ -8,7 +8,7 @@ import (
 )
 
 func Info(c *gin.Context, err error, msg string) {
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(400, gin.H{
 		"isSuccess": false,
 		"message":   msg + ": " + err.Error(),
 	})
