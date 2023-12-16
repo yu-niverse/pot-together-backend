@@ -1,8 +1,9 @@
 package record
 
 import (
+	"fmt"
 	"net/http"
-	"pottogether/internal/response"
+	"pottogether/pkg/errhandler"
 	"pottogether/pkg/logger"
 	"pottogether/pkg/mariadb/query"
 	"strconv"
@@ -11,116 +12,97 @@ import (
 )
 
 func CreateRecord(c *gin.Context) {
-	// Create response
-	r := response.New()
-
 	// Parse request body to JSON format
-	var recordRequest query.RecordRequest
-	if err := c.ShouldBindJSON(&recordRequest); err != nil {
-		logger.Error("[RECORD] " + err.Error())
-		r.Message = err.Error()
-		c.JSON(http.StatusBadRequest, r)
+	var req query.RecordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errhandler.Info(c, err, "Invalid request format")
 		return
 	}
+	logger.Info("Request content: " + fmt.Sprintf("%+v", req))
 
-	id, err := query.CreateRecord(recordRequest)
+	id, err := query.CreateRecord(req)
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Error(c, err, "Error creating record")
 		return
 	}
-
-	r.IsSuccess = true
-	r.Data = response.RecordReponse{ID: id}
-	c.JSON(http.StatusOK, r)
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"isSuccess": true,
+		"id":        id,
+	})
 }
 
 func GetUserRecord(c *gin.Context) {
-	// Create response
-	r := response.New()
-
 	record, err := query.GetRecordOverview(c.MustGet("id").(int), "record.user_id")
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Error(c, err, "Error getting user record")
 		return
 	}
-
-	r.IsSuccess = true
-	r.Data = record
-	c.JSON(http.StatusOK, r)
+	c.JSON(http.StatusOK, gin.H{
+		"isSuccess": true,
+		"data":      record,
+		"message":   "Success",
+	})
 }
 
 func GetRoomRecords(c *gin.Context) {
-	// Create response
-	r := response.New()
-
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Info(c, err, "Invalid request format")
 		return
 	}
 	record, err := query.GetRecordOverview(id, "record.room_id")
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Error(c, err, "Error getting room records")
 		return
 	}
-
-	r.IsSuccess = true
-	r.Data = record
-	c.JSON(http.StatusOK, r)
+	c.JSON(http.StatusOK, gin.H{
+		"isSuccess": true,
+		"data":      record,
+		"message":   "Success",
+	})
 }
 
 func GetRecordDetail(c *gin.Context) {
-	// Create response
-	r := response.New()
-
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Info(c, err, "Invalid request format")
 		return
 	}
 	record, err := query.GetRecordDetail(id)
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Error(c, err, "Error getting record detail")
 		return
 	}
-
-	r.IsSuccess = true
-	r.Data = record
-	c.JSON(http.StatusOK, r)
+	c.JSON(http.StatusOK, gin.H{
+		"isSuccess": true,
+		"data":      record,
+		"message":   "Success",
+	})
 }
 
 func UpdateRecord(c *gin.Context) {
-	// Create response
-	r := response.New()
-
 	// Parse request body to JSON format
-	var doneRequest query.DoneRequest
-	if err := c.ShouldBindJSON(&doneRequest); err != nil {
-		logger.Error("[RECORD] " + err.Error())
-		r.Message = err.Error()
-		c.JSON(http.StatusBadRequest, r)
+	var req query.DoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errhandler.Info(c, err, "Invalid request format")
 		return
 	}
-
+	logger.Info("Request content: " + fmt.Sprintf("%+v", req))
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Info(c, err, "Invalid request format")
 		return
 	}
-	err = query.UpdateRecord(id, doneRequest)
+	err = query.UpdateRecord(id, req)
 	if err != nil {
-		r.Message = err.Error()
-		c.JSON(http.StatusInternalServerError, r)
+		errhandler.Error(c, err, "Error updating record")
 		return
 	}
-
-	r.IsSuccess = true
-	c.JSON(http.StatusOK, r)
+	// Response
+	c.JSON(http.StatusOK, gin.H{
+		"isSuccess": true,
+		"id":        id,
+		"message":   "Successfully updated record with id: " + strconv.Itoa(id),
+	})
 }

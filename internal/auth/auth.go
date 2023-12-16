@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"net/http"
 	"pottogether/config"
+	"pottogether/pkg/errhandler"
 	"pottogether/pkg/logger"
 	"strings"
 	"time"
@@ -32,14 +32,12 @@ func GenerateToken(userID int, email string) (string, error) {
 			ExpiresAt: expiresAt,
 		},
 	})
-
 	// Sign the token with our secret key
 	tokenString, err := token.SignedString(jwtSecretKey)
 	if err != nil {
-		logger.Error("[AUTH] Failed to generate token: " + err.Error())
+		logger.Error("[AUTH] Error generating token: " + err.Error())
 		return "", err
 	}
-
 	logger.Info("[AUTH] Generated token for user: " + email)
 	return tokenString, nil
 }
@@ -49,21 +47,18 @@ func ValidateToken(c *gin.Context) {
 	// Get token from header
 	auth := c.GetHeader("Authorization")
 	if auth == "" {
-		logger.Warn("[AUTH] Received request without Bearer authorization header")
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Missing authorization header"})
+		errhandler.Unauthorized(c, nil, "Missing token")
 		c.Abort()
 		return
 	}
 	token := strings.Split(auth, "Bearer ")[1]
-
 	// Parse token
 	tokenClaims, err := jwt.ParseWithClaims(token, &authClaims{}, func(token *jwt.Token) (i interface{}, err error) {
 		return jwtSecretKey, nil
 	})
 	// Check for token validation errors
 	if err != nil {
-		logger.Warn("[AUTH] Received request with invalid token: " + err.Error())
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "token invalid"})
+		errhandler.Unauthorized(c, err, "Invalid token")
 		c.Abort()
 		return
 	}

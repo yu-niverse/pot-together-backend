@@ -1,178 +1,281 @@
 package query
 
 import (
-	"errors"
+	"database/sql"
 	"pottogether/internal/hash"
-	"pottogether/pkg/logger"
 	"pottogether/pkg/mariadb"
 )
 
-type SignUpRequest struct {
-	Avatar *int   `json:"avatar" binding:"required"`
-	Name   string `json:"name" binding:"required"`
-	Email  string `json:"email" binding:"required"`
-	Passwd string `json:"passwd" binding:"required"`
+type User struct {
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Avatar   int    `json:"avatar"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-type LoginRequest struct {
-	Email  string `json:"email" binding:"required"`
-	Passwd string `json:"passwd" binding:"required"`
+type UserProfile struct {
+	ID          int        `json:"id"`
+	Name        string     `json:"name"`
+	Avatar      int        `json:"avatar"`
+	CookingTime int        `json:"cookingTime"`
+	Status      userStatus `json:"status"`
+	Done        []string   `json:"done"`
 }
 
-type UserInfo struct {
-	ID        int           `json:"id"`
-	Avatar    *int          `json:"avatar"`
-	Name      string        `json:"name"`
-	Level     int           `json:"level"`
-	TotalTime int           `json:"total_time"`
-	Today     []todayRecord `json:"today"`
-	Week      []int         `json:"week"`
+type userStatus struct {
+	Code       int    `json:"code"`
+	Ingredient string `json:"ingredient"`
+}
+
+type UserOverview struct {
+	ID    int           `json:"id"`
+	Level userLevel     `json:"level"`
+	Today []todayRecord `json:"today"`
+	Week  []dateRecord  `json:"week"`
+	Month []dateRecord  `json:"month"`
+}
+
+type userLevel struct {
+	Level     int    `json:"level"`
+	TotalTime int    `json:"totalTime"`
+	Next      string `json:"next"`
 }
 
 type todayRecord struct {
-	ID    int    `json:"id"`
-	Image string `json:"image"`
+	RecordID int    `json:"recordID"`
+	Image    string `json:"image"`
 }
 
-func SignUp(rr SignUpRequest) (int, error) {
-	var email string
+type dateRecord struct {
+	Date   string `json:"date"`
+	Length int    `json:"length"`
+}
 
-	// Check if user already exists
-	query := "SELECT email FROM user WHERE email = ?"
-	err := mariadb.DB.QueryRow(query, rr.Email).Scan(&email)
-	if err != nil && err.Error() != "sql: no rows in result set" {
-		logger.Error("[USER] " + err.Error())
-		return -1, err
-	} else if email != "" {
-		logger.Warn("[USER] Email:" + rr.Email + " already exists")
-		return -1, errors.New("email already exists")
-	}
-
-	// Hash password
-	if rr.Passwd, err = hash.HashPassword(rr.Passwd); err != nil {
-		logger.Error("[USER] " + err.Error())
-		return -1, err
-	}
-
-	// Insert into user database
-	query = "INSERT INTO user (avatar, email, username, password, created_at, level) VALUES (?, ?, ?, ?, NOW(), 1)"
-	result, err := mariadb.DB.Exec(query, rr.Avatar, rr.Email, rr.Name, rr.Passwd)
+func CheckEmail(email string) (bool, error) {
+	query := "SELECT EXISTS(SELECT 1 FROM user WHERE email = ?)"
+	var exists bool
+	err := mariadb.DB.QueryRow(query, email).Scan(&exists)
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
+		return false, err
+	}
+	return exists, nil
+}
+
+func CheckUser(id int) (bool, error) {
+	query := "SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)"
+	var exists bool
+	err := mariadb.DB.QueryRow(query, id).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func SignUp(user User) (int, error) {
+	var err error
+	// Hash password
+	if user.Password, err = hash.HashPassword(user.Password); err != nil {
 		return -1, err
 	}
-
-	// Get auto incremented id
+	// Insert into user database
+	query := `
+		INSERT INTO user (avatar, email, username, password, created_at, level, total_time) 
+		VALUES (?, ?, ?, ?, NOW(), 1, 0)`
+	result, err := mariadb.DB.Exec(query, user.Avatar, user.Email, user.Name, user.Password)
+	if err != nil {
+		return -1, err
+	}
+	// Get auto increment id
 	id, err := result.LastInsertId()
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
 		return -1, err
 	}
-
-	logger.Info("[USER] Successfully registered user with email: " + rr.Email)
 	return int(id), nil
 }
 
-func Login(lr LoginRequest) (int, error) {
-	var password string
-	var id int
-
+func Login(email string, input_pwd string) (int, error) {
 	// Get user password
+	var id int
+	var password string
 	query := "SELECT id, password FROM user WHERE email = ?"
-	err := mariadb.DB.QueryRow(query, lr.Email).Scan(&id, &password)
+	err := mariadb.DB.QueryRow(query, email).Scan(&id, &password)
 	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			logger.Warn("[USER] Email: " + lr.Email + " not found")
-			return -1, errors.New("user not found")
+		if err == sql.ErrNoRows {
+			return -1, nil
 		}
-		logger.Error("[USER] " + err.Error())
 		return -1, err
 	}
-
 	// Check if password is correct
-	err = hash.CheckPasswordHash(lr.Passwd, password)
+	err = hash.CheckPasswordHash(input_pwd, password)
 	if err != nil {
-		logger.Warn("[USER] Incorrect password for Email: " + lr.Email)
-		return -1, errors.New("incorrect password")
+		return -1, nil
 	}
-
-	logger.Info("[USER] Successfully logged in user with email: " + lr.Email)
-
 	return id, nil
 }
 
-func GetProfile(id int) (UserInfo, error) {
-	var ui UserInfo
-
+func GetProfile(id int) (UserProfile, error) {
+	var result UserProfile
 	// Get user info
-	query := "SELECT id, avatar, username, level FROM user WHERE id = ?"
-	err := mariadb.DB.QueryRow(query, id).Scan(&ui.ID, &ui.Avatar, &ui.Name, &ui.Level)
+	query := "SELECT id, avatar, username FROM user WHERE id = ?"
+	err := mariadb.DB.QueryRow(query, id).Scan(&result.ID, &result.Avatar, &result.Name)
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
-		return ui, err
+		return result, err
 	}
-
-	// Get total time
-	query = "SELECT COALESCE(SUM(time_interval), 0) FROM record WHERE user_id = ?"
-	err = mariadb.DB.QueryRow(query, id).Scan(&ui.TotalTime)
+	// Get cooking time
+	query = `
+		SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) FROM record
+		WHERE user_id = ? AND status = 0
+		ORDER BY created_at DESC LIMIT 1`
+	err = mariadb.DB.QueryRow(query, id).Scan(&result.CookingTime)
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
-		return ui, err
+		if err == sql.ErrNoRows {
+			result.CookingTime = 0
+		} else {
+			return result, err
+		}
 	}
-
-	// Get today list
-	ui.Today, err = getToday(id)
+	// Get status
+	query = `
+		SELECT status, ingredient.name FROM record
+		INNER JOIN ingredient ON record.ingredient_id = ingredient.id
+		WHERE user_id = ?
+		ORDER BY created_at DESC LIMIT 1`
+	err = mariadb.DB.QueryRow(query, id).Scan(&result.Status.Code, &result.Status.Ingredient)
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
-		return ui, err
+		if err == sql.ErrNoRows {
+			result.Status.Code = 0
+			result.Status.Ingredient = ""
+		} else {
+			return result, err
+		}
 	}
-
-	// Get week interval
-	ui.Week, err = getWeekInterval(id)
+	// Get done
+	query = `
+		SELECT ingredient.name FROM record
+		INNER JOIN ingredient ON record.ingredient_id = ingredient.id
+		WHERE user_id = ? AND status = 1
+		ORDER BY created_at DESC LIMIT 5`
+	rows, err := mariadb.DB.Query(query, id)
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
-		return ui, err
+		return result, err
 	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		err = rows.Scan(&name)
+		if err != nil {
+			return result, err
+		}
+		result.Done = append(result.Done, name)
+	}
+	return result, nil
+}
 
-	return ui, nil
+func GetOverview(id int) (UserOverview, error) {
+	var result UserOverview
+	// Get user info
+	query := "SELECT id, level, total_time FROM user WHERE id = ?"
+	err := mariadb.DB.QueryRow(query, id).Scan(&result.ID, &result.Level.Level, &result.Level.TotalTime)
+	if err != nil {
+		return result, err
+	}
+	// Get today
+	result.Today, err = getToday(id)
+	if err != nil {
+		return result, err
+	}
+	// Get week
+	result.Week, err = getWeekInterval(id)
+	if err != nil {
+		return result, err
+	}
+	// Get month
+	result.Month, err = getMonthInterval(id)
+	if err != nil {
+		return result, err
+	}
+	return result, nil
 }
 
 func getToday(id int) ([]todayRecord, error) {
-	var todayList []todayRecord
-
-	// Get user record
-	query := "SELECT record.id, ingredient.image FROM record INNER JOIN ingredient ON record.ingredient_id = ingredient.id WHERE user_id = ? AND DATE(finish_time) = CURDATE()"
+	var records []todayRecord
+	query := `
+		SELECT record.id, ingredient.image 
+		FROM record INNER JOIN ingredient 
+		ON record.ingredient_id = ingredient.id 
+		WHERE user_id = ? AND DATE(finish_time) = CURDATE()`
 	rows, err := mariadb.DB.Query(query, id)
 	if err != nil {
-		logger.Error("[USER] " + err.Error())
+		if err == sql.ErrNoRows {
+			return records, nil
+		}
 		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var t todayRecord
-		err = rows.Scan(&t.ID, &t.Image)
+		var record todayRecord
+		err = rows.Scan(&record.RecordID, &record.Image)
 		if err != nil {
-			logger.Error("[USER] " + err.Error())
 			return nil, err
 		}
-		todayList = append(todayList, t)
+		records = append(records, record)
 	}
-	return todayList, nil
+	return records, nil
 }
 
-func getWeekInterval(id int) ([]int, error) {
-	var weekInterval []int
-
-	// Go through 7 days and sum up the time_interval
-	for i := 6; i >= 0; i-- {
-		query := "SELECT COALESCE(SUM(time_interval), 0) FROM record WHERE user_id = ? AND DATE(finish_time) = DATE_SUB(CURDATE(), INTERVAL ? DAY)"
-		var sum int
-		err := mariadb.DB.QueryRow(query, id, i).Scan(&sum)
-		if err != nil {
-			logger.Error("[USER] " + err.Error())
-			return weekInterval, err
+func getWeekInterval(id int) ([]dateRecord, error) {
+	var records []dateRecord
+	query := `
+		SELECT 
+			DATE(created_at) AS date,
+			SEC_TO_TIME(SUM(time_interval)) AS total_time
+		FROM record
+		WHERE WEEK(created_at) = WEEK(NOW()) AND user_id = ?
+		GROUP BY DATE(created_at);`
+	rows, err := mariadb.DB.Query(query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return records, nil
 		}
-		weekInterval = append(weekInterval, sum)
+		return nil, err
 	}
-	return weekInterval, nil
+	defer rows.Close()
+	for rows.Next() {
+		var record dateRecord
+		err = rows.Scan(&record.Date, &record.Length)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
+}
+
+func getMonthInterval(id int) ([]dateRecord, error) {
+	var records []dateRecord
+	query := `
+		SELECT 
+			DATE(created_at) AS date,
+			SEC_TO_TIME(SUM(time_interval)) AS total_time
+		FROM record
+		WHERE MONTH(created_at) = MONTH(NOW()) AND user_id = ?
+		GROUP BY DATE(created_at);`
+	rows, err := mariadb.DB.Query(query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return records, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var record dateRecord
+		err = rows.Scan(&record.Date, &record.Length)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
 }
