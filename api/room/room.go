@@ -11,10 +11,10 @@ import (
 )
 
 type CreateRoomRequest struct {
-	Name        string `json:"name" binding:"required"`
-	MemberLimit int    `json:"memberLimit" binding:"required"`
-	Privacy     string `json:"privacy" binding:"required"`
-	Category    string `json:"category" binding:"required"`
+	Name        string `json:"name"`
+	MemberLimit int    `json:"memberLimit"`
+	Privacy     string `json:"privacy"`
+	Category    string `json:"category"`
 }
 
 func CreateRoom(c *gin.Context) {

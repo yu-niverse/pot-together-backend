@@ -14,15 +14,15 @@ import (
 )
 
 type SignUpRequest struct {
-	Avatar   *int   `json:"avatar" binding:"required"`
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"passwd" binding:"required"`
+	Avatar   int    `json:"avatar"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"passwd"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"passwd" binding:"required"`
+	Email    string `json:"email"`
+	Password string `json:"passwd"`
 }
 
 func Signup(c *gin.Context) {
@@ -132,7 +132,7 @@ func GetProfile(c *gin.Context) {
 func GetOverview(c *gin.Context) {
 	id := c.GetInt("id")
 	if id == 0 {
-		errhandler.Info(c, nil, "Invalid userID")
+		errhandler.Info(c, fmt.Errorf("invalid id"), "Error getting user overview")
 		return
 	}
 	// Get user overview

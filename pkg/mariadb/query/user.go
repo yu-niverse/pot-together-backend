@@ -10,7 +10,7 @@ import (
 type User struct {
 	ID       int    `json:"userID"`
 	Name     string `json:"name"`
-	Avatar   *int   `json:"avatar"`
+	Avatar   int    `json:"avatar"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -18,7 +18,7 @@ type User struct {
 type UserProfile struct {
 	ID          int        `json:"userID"`
 	Name        string     `json:"name"`
-	Avatar      *int       `json:"avatar"`
+	Avatar      int        `json:"avatar"`
 	CookingTime int        `json:"cookingTime"`
 	Status      userStatus `json:"status"`
 	Done        []string   `json:"done"`
