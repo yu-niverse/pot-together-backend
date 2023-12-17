@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"pottogether/config"
 	"pottogether/pkg/errhandler"
 	"pottogether/pkg/logger"
@@ -47,7 +48,7 @@ func ValidateToken(c *gin.Context) {
 	// Get token from header
 	auth := c.GetHeader("Authorization")
 	if auth == "" {
-		errhandler.Unauthorized(c, nil, "Missing token")
+		errhandler.Unauthorized(c, fmt.Errorf("no token provided"), "Error validating token")
 		c.Abort()
 		return
 	}
