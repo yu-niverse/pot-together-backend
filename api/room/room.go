@@ -95,9 +95,47 @@ func GetRoomOverview(c *gin.Context) {
 }
 
 func JoinRoom(c *gin.Context) {
+	roomID, err := strconv.Atoi(c.Param("roomID"))
+	if err != nil {
+		errhandler.Info(c, err, "Invalid roomID")
+		return
+	}
+	if err := query.JoinRoom(c.GetInt("id"), roomID); err != nil {
+		if err.Error() == "room does not exist" {
+			errhandler.Info(c, err, "Error joining room")
+			return
+		}
+		if err.Error() == "user already in the room" {
+			errhandler.Info(c, err, "Error joining room")
+			return
+		}
+		if err.Error() == "room is full" {
+			errhandler.Info(c, err, "Error joining room")
+			return
+		}
+		errhandler.Error(c, err, "Error joining room")
+		return
+	}
 }
 
 func LeaveRoom(c *gin.Context) {
+	roomID, err := strconv.Atoi(c.Param("roomID"))
+	if err != nil {
+		errhandler.Info(c, err, "Invalid roomID")
+		return
+	}
+	if err := query.LeaveRoom(c.GetInt("id"), roomID); err != nil {
+		if err.Error() == "room does not exist" {
+			errhandler.Info(c, err, "Error leaving room")
+			return
+		}
+		if err.Error() == "user not in room" {
+			errhandler.Info(c, err, "Error leaving room")
+			return
+		}
+		errhandler.Error(c, err, "Error leaving room")
+		return
+	}
 }
 
 func GetRoomRecords(c *gin.Context) {

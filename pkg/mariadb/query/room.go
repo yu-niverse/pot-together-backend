@@ -312,3 +312,114 @@ func getDoneRecords(roomID int) ([]todayRecord, error) {
 	}
 	return records, nil
 }
+
+func JoinRoom(roomID int, userID int) error {
+	// Check if room exists
+	query := "SELECT EXISTS(SELECT 1 FROM room WHERE id = ?)"
+	var exists bool
+	err := mariadb.DB.QueryRow(query, roomID).Scan(&exists)
+	if err != nil {
+		return err
+	} else if !exists {
+		return fmt.Errorf("room does not exist")
+	}
+	// Check if user is already in room
+	query = "SELECT EXISTS(SELECT 1 FROM room_user WHERE room_id = ? AND user_id = ?)"
+	err = mariadb.DB.QueryRow(query, roomID, userID).Scan(&exists)
+	if err != nil {
+		return err
+	} else if exists {
+		return fmt.Errorf("user already in the room")
+	}
+	// Check if room is full
+	query = "SELECT member_cnt, member_limit FROM room WHERE id = ?"
+	var memberCnt, memberLimit int
+	err = mariadb.DB.QueryRow(query, roomID).Scan(&memberCnt, &memberLimit)
+	if err != nil {
+		return err
+	} else if memberCnt >= memberLimit {
+		return fmt.Errorf("room is full")
+	}
+	// Begin transaction
+	tx, err := mariadb.DB.Begin()
+	if err != nil {
+		return err
+	}
+	// Add user to room
+	query = `
+		INSERT INTO room_user (user_id, room_id)
+		VALUES (?, ?)`
+	_, err = mariadb.DB.Exec(query, userID, roomID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Update member count
+	query = `
+		UPDATE room
+		SET member_cnt = member_cnt + 1
+		WHERE id = ?`
+	_, err = mariadb.DB.Exec(query, roomID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return nil
+}
+
+func LeaveRoom(roomID int, userID int) error {
+	// Check if room exists
+	query := "SELECT EXISTS(SELECT 1 FROM room WHERE id = ?)"
+	var exists bool
+	err := mariadb.DB.QueryRow(query, roomID).Scan(&exists)
+	if err != nil {
+		return err
+	} else if !exists {
+		return fmt.Errorf("room does not exist")
+	}
+	// Check if user is in room
+	query = "SELECT EXISTS(SELECT 1 FROM room_user WHERE room_id = ? AND user_id = ?)"
+	err = mariadb.DB.QueryRow(query, roomID, userID).Scan(&exists)
+	if err != nil {
+		return err
+	} else if !exists {
+		return fmt.Errorf("user not in room")
+	}
+	// Begin transaction
+	tx, err := mariadb.DB.Begin()
+	if err != nil {
+		return err
+	}
+	// Remove user from room
+	query = `
+		DELETE FROM room_user
+		WHERE user_id = ? AND room_id = ?`
+	_, err = mariadb.DB.Exec(query, userID, roomID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Update member count
+	query = `
+		UPDATE room
+		SET member_cnt = member_cnt - 1
+		WHERE id = ?`
+	_, err = mariadb.DB.Exec(query, roomID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return nil
+}
