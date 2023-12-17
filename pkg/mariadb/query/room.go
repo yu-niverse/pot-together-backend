@@ -20,7 +20,7 @@ type Room struct {
 type RoomDetail struct {
 	ID          int      `json:"roomID"`
 	Name        string   `json:"name"`
-	MemberCnt   int      `json:"memberCnt"`
+	MemberCnt   int      `json:"memberCount"`
 	MemberLimit int      `json:"memberLimit"`
 	Category    []string `json:"category"`
 }
