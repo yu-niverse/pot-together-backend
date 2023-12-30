@@ -139,4 +139,19 @@ func LeaveRoom(c *gin.Context) {
 }
 
 func GetRoomRecords(c *gin.Context) {
+	roomID, err := strconv.Atoi(c.Param("roomID"))
+	if err != nil {
+		errhandler.Info(c, err, "Invalid roomID")
+		return
+	}
+	records, err := query.GetRoomRecords(roomID)
+	if err != nil {
+		errhandler.Error(c, err, "Error getting room records")
+		return
+	}
+	c.JSON(200, gin.H{
+		"isSuccess": true,
+		"data":      records,
+		"message":   "Room records retrieved successfully",
+	})
 }

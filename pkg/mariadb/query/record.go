@@ -1,134 +1,146 @@
 package query
 
 import (
-	"database/sql"
-	"errors"
-	"fmt"
 	"pottogether/pkg/logger"
 	"pottogether/pkg/mariadb"
+	"strconv"
 )
 
-type RecordRequest struct {
-	UserID       int  `json:"user_id" binding:"required"`
-	RoomID       int  `json:"room_id" binding:"required"`
-	PotID        int  `json:"pot_id" binding:"required"`
-	IngredientID int  `json:"ingredient_id" binding:"required"`
-}
-
-type DoneRequest struct {
-	Image        string `json:"image" binding:"required"`
-	Caption      string `json:"caption" binding:"required"`
-	TimeInterval *int   `json:"time_interval" binding:"required"`
-	Interrupt    *int   `json:"interrupt" binding:"required"`
-	Status       *int   `json:"status" binding:"required"`
-}
-
-type RecordOverview struct {
-	ID              int     `json:"id"`
-	Interval        *int    `json:"interval"`
-	Finish_time     *string `json:"finish_time"`
-	IngredientID    int     `json:"ingredient_id"`
-	IngredientImage string  `json:"ingredient_image"`
-	IngredientName  string  `json:"ingredient_name"`
-	Status          int     `json:"status"`
+type Record struct {
+	ID           int    `json:"recordID"`
+	UserID       int    `json:"userID"`
+	RoomID       int    `json:"roomID"`
+	PotID        string `json:"potID"`
+	IngredientID int    `json:"ingredientID"`
+	Image        string `json:"image"`
+	Caption      string `json:"caption"`
+	Interval     int    `json:"interval"`
+	FinishTime   int    `json:"finishTime"`
+	Interrupt    int    `json:"interrupt"`
+	Status       int    `json:"status"`
 }
 
 type RecordDetail struct {
-	ID              int     `json:"id"`
-	Image           *string `json:"image"`
-	Caption         *string `json:"caption"`
-	Interval        *int    `json:"interval"`
-	Finish_time     *string `json:"finish_time"`
-	IngredientID    int     `json:"ingredient_id"`
-	IngredientImage string  `json:"ingredient_image"`
-	IngredientName  string  `json:"ingredient_name"`
-	Interrupt       *int    `json:"interrupt"`
-	Status          *int    `json:"status"`
+	ID              int    `json:"recordID"`
+	Image           string `json:"image"`
+	Caption         string `json:"caption"`
+	Interval        int    `json:"interval"`
+	FinishTime      int    `json:"finishTime"`
+	IngredientID    int    `json:"ingredientID"`
+	IngredientImage string `json:"ingredientImage"`
+	IngredientName  string `json:"ingredientName"`
+	Interrupt       int    `json:"interrupt"`
+	Status          int    `json:"status"`
 }
 
-func CreateRecord(r RecordRequest) (int, error) {
-	// Insert record
-	query := "INSERT INTO record (user_id, room_id, pot_id, ingredient_id, time_interval, interrupt, status) VALUES (?, ?, ?, ?, 0, 0, 0)"
-	result, err := mariadb.DB.Exec(query, r.UserID, r.RoomID, r.PotID, r.IngredientID)
+func CreateRecord(record Record) (int, error) {
+	query := `
+		INSERT INTO record (user_id, room_id, pot_id, ingredient_id, time_interval, interrupt, status, created_at, finish_time, image, caption)
+		VALUES (?, ?, ?, ?, 0, 0, 0, NOW(), NOW(), "null", "null")`
+	result, err := mariadb.DB.Exec(query, record.UserID, record.RoomID, record.PotID, record.IngredientID)
 	if err != nil {
-		logger.Error("[RECORD] " + err.Error())
 		return -1, err
 	}
-
-	// Get record id
 	id, err := result.LastInsertId()
 	if err != nil {
-		logger.Error("[RECORD] " + err.Error())
 		return -1, err
 	}
-
 	return int(id), nil
 }
 
-func GetRecordOverview(id int, condition string) ([]RecordOverview, error) {
-	var list []RecordOverview
-
-	query := "SELECT record.id, record.time_interval, record.finish_time, ingredient.id, ingredient.image, ingredient.name, record.status FROM record INNER JOIN ingredient ON record.ingredient_id = ingredient.id WHERE " + condition + " = ?"
-	rows, err := mariadb.DB.Query(query, id)
+func UpdateRecord(record Record) error {
+	// check if record exists
+	query := `SELECT id FROM record WHERE id = ? AND status = 0`
+	err := mariadb.DB.QueryRow(query, record.ID).Scan(&record.ID)
 	if err != nil {
-		logger.Error("[RECORD] " + err.Error())
-		return nil, err
+		logger.Warn("Invalid recordID: " + strconv.Itoa(record.ID))
+		return err
 	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var r RecordOverview
-		if err := rows.Scan(&r.ID, &r.Interval, &r.Finish_time, &r.IngredientID, &r.IngredientImage, &r.IngredientName, &r.Status); err != nil {
-			logger.Error("[RECORD] " + err.Error())
-			return nil, err
-		}
-		list = append(list, r)
-	}
-	return list, nil
-}
-
-func GetRecordDetail(id int) ([]RecordDetail, error) {
-	var list []RecordDetail
-
-	query := "SELECT record.id, record.image, record.caption, record.time_interval, record.finish_time, ingredient.id, ingredient.image, ingredient.name, record.interrupt, record.status FROM record INNER JOIN ingredient ON record.ingredient_id = ingredient.id WHERE record.id = ?"
-	rows, err := mariadb.DB.Query(query, id)
+	// update record
+	query = `
+		UPDATE record
+		SET image = ?, caption = ?, time_interval = ?, finish_time = NOW(), interrupt = ?, status = ?
+		WHERE id = ?
+	`
+	_, err = mariadb.DB.Exec(query, record.Image, record.Caption, record.Interval, record.Interrupt, record.Status, record.ID)
 	if err != nil {
-		logger.Error("[RECORD] " + err.Error())
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var r RecordDetail
-		if err := rows.Scan(&r.ID, &r.Image, &r.Caption, &r.Interval, &r.Finish_time, &r.IngredientID, &r.IngredientImage, &r.IngredientName, &r.Interrupt, &r.Status); err != nil {
-			logger.Error("[RECORD] " + err.Error())
-			return nil, err
-		}
-		list = append(list, r)
-	}
-	return list, nil
-}
-
-func UpdateRecord(id int, r DoneRequest) error {
-	// Check if record exists and status is 0
-	query := "SELECT id FROM record WHERE id = ? AND status = 0"
-	err := mariadb.DB.QueryRow(query, id).Scan(&id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			logger.Warn("[RECORD] Record id:" + fmt.Sprint(id) + " not found or already done")
-			return errors.New("record not found or already done")
-		} else {
-			logger.Error("[RECORD] " + err.Error())
-			return err
-		}
-	}
-
-	// Update record
-	query = "UPDATE record SET image = ?, caption = ?, time_interval = ?, interrupt = ?, status = ?, finish_time = NOW() WHERE id = ?"
-	_, err = mariadb.DB.Exec(query, r.Image, r.Caption, r.TimeInterval, r.Interrupt, r.Status, id)
-	if err != nil {
-		logger.Error("[RECORD] " + err.Error())
 		return err
 	}
 	return nil
+}
+
+func GetUserRecords(userID int) ([]RecordDetail, error) {
+	query := `
+		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status
+		FROM record r
+		INNER JOIN ingredient i ON r.ingredient_id = i.id
+		WHERE r.user_id = ?
+		ORDER BY status DESC`
+	rows, err := mariadb.DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var records []RecordDetail
+	for rows.Next() {
+		var record RecordDetail
+		err = rows.Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
+}
+
+func GetRecordDetail(recordID int) (RecordDetail, error) {
+	// check if record exists
+	query := `SELECT id FROM record WHERE id = ?`
+	err := mariadb.DB.QueryRow(query, recordID).Scan(&recordID)
+	if err != nil {
+		logger.Warn("Invalid recordID: " + strconv.Itoa(recordID))
+		return RecordDetail{}, err
+	}
+	query = `
+		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status
+		FROM record r
+		INNER JOIN ingredient i ON r.ingredient_id = i.id
+		WHERE r.id = ?`
+	var record RecordDetail
+	err = mariadb.DB.QueryRow(query, recordID).Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
+	if err != nil {
+		return RecordDetail{}, err
+	}
+	return record, nil
+}
+
+func GetRoomRecords(roomID int) ([]RecordDetail, error) {
+	// check if room exists
+	query := `SELECT id FROM room WHERE id = ?`
+	err := mariadb.DB.QueryRow(query, roomID).Scan(&roomID)
+	if err != nil {
+		logger.Warn("Invalid roomID: " + strconv.Itoa(roomID))
+		return nil, err
+	}
+	query = `
+		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status
+		FROM record r
+		INNER JOIN ingredient i ON r.ingredient_id = i.id
+		WHERE r.room_id = ?
+		ORDER BY status DESC`
+	rows, err := mariadb.DB.Query(query, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var records []RecordDetail
+	for rows.Next() {
+		var record RecordDetail
+		err = rows.Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
+	return records, nil
 }

@@ -64,30 +64,37 @@ func UploadImage(image []byte, filename string) (string, error) {
 }
 
 // upload middleware
-func UploadMiddleware(c *gin.Context) {
+func UploadMiddleware(c *gin.Context, kind string, filename string) {
 	file, err := c.FormFile("image")
 	if err != nil {
 		errhandler.Error(c, err, "Error retrieving image from the form")
+		c.Abort()
 		return
 	}
 	fileBytes, err := file.Open()
 	if err != nil {
 		errhandler.Error(c, err, "Error opening image")
+		c.Abort()
 		return
 	}
 	defer fileBytes.Close()
 	buffer := make([]byte, file.Size)
 	if _, err := fileBytes.Read(buffer); err != nil {
 		errhandler.Error(c, err, "Error reading image")
+		c.Abort()
 		return
 	}
 	// upload image to s3
 	InitS3Session()
-	url, err := UploadImage(buffer, file.Filename)
+	if filename == "" {
+		filename = file.Filename
+	}
+	path := fmt.Sprintf("%s/%s", kind, filename)
+	url, err := UploadImage(buffer, path)
 	if err != nil {
 		errhandler.Error(c, err, "Error uploading image to s3")
+		c.Abort()
 		return
 	}
 	c.Set("image", url)
-	c.Next()
 }

@@ -2,6 +2,7 @@ package ingredient
 
 import (
 	"mime/multipart"
+	"pottogether/internal/s3"
 	"pottogether/pkg/errhandler"
 	"pottogether/pkg/mariadb/query"
 
@@ -29,6 +30,7 @@ func GetIngredients(c *gin.Context) {
 }
 
 func AddIngredient(c *gin.Context) {
+	s3.UploadMiddleware(c, "ingredient", "")
 	var req AddIngredientRequest
 	if err := c.ShouldBind(&req); err != nil {
 		errhandler.Info(c, err, "Invalid request format")
