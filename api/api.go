@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"pottogether/api/ingredient"
 	"pottogether/api/record"
 	"pottogether/api/room"
 	"pottogether/api/user"
 	"pottogether/config"
 	"pottogether/internal/auth"
+	"pottogether/internal/s3"
 	"pottogether/pkg/logger"
 	"pottogether/pkg/mariadb"
 	"syscall"
@@ -89,6 +91,10 @@ func Main() {
 	RoomGroup.GET(":roomID/records", room.GetRoomRecords)
 
 	// Ingredient Routes
+	ingredientGroup := router.Group("/ingredients")
+	ingredientGroup.GET("", ingredient.GetIngredients)
+	ingredientGroup.Use(s3.UploadMiddleware)
+	ingredientGroup.POST("", ingredient.AddIngredient)
 
 	// Record Routes
 	recordGroup := router.Group("/records")
@@ -96,8 +102,6 @@ func Main() {
 	recordGroup.GET("", record.GetUserRecord)
 	recordGroup.GET("/:id", record.GetRecordDetail)
 	recordGroup.PATCH("/:id", record.UpdateRecord)
-
-	// Pot Routes
 
 	// Start API service
 	srv := &http.Server{
