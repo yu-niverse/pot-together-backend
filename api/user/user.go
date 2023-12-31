@@ -17,12 +17,12 @@ type SignUpRequest struct {
 	Avatar   int    `json:"avatar"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
-	Password string `json:"passwd"`
+	Password string `json:"password"`
 }
 
 type LoginRequest struct {
 	Email    string `json:"email"`
-	Password string `json:"passwd"`
+	Password string `json:"password"`
 }
 
 func Signup(c *gin.Context) {
