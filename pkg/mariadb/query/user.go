@@ -159,6 +159,9 @@ func GetProfile(id int) (UserProfile, error) {
 		ORDER BY created_at DESC LIMIT 5`
 	rows, err := mariadb.DB.Query(query, id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return result, nil
+		}
 		return result, err
 	}
 	defer rows.Close()
@@ -179,6 +182,9 @@ func GetOverview(id int) (UserOverview, error) {
 	query := "SELECT id, level, total_time FROM user WHERE id = ?"
 	err := mariadb.DB.QueryRow(query, id).Scan(&result.ID, &result.Level.Level, &result.Level.TotalTime)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return result, fmt.Errorf("user %d does not exist", id)
+		}
 		return result, err
 	}
 	// Get next level
