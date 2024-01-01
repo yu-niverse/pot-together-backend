@@ -37,8 +37,9 @@ type RoomOverview struct {
 }
 
 type roomUser struct {
-	ID     int  `json:"userID"`
-	Avatar *int `json:"avatar"`
+	ID       int    `json:"userID"`
+	Username string `json:"username"`
+	Avatar   *int   `json:"avatar"`
 }
 
 type roomDateRecord struct {
@@ -172,7 +173,7 @@ func GetRoomOverview(roomID int, userID int) (RoomOverview, error) {
 	room.Level.Next, err = getNextLevel(room.Level.Level)
 	// Get room members
 	query = `
-		SELECT u.id, u.avatar
+		SELECT u.id, u.avatar, u.username
 		FROM room_user ru
 		INNER JOIN user u ON ru.user_id = u.id
 		WHERE ru.room_id = ?`
@@ -183,7 +184,7 @@ func GetRoomOverview(roomID int, userID int) (RoomOverview, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var member roomUser
-		if err := rows.Scan(&member.ID, &member.Avatar); err != nil {
+		if err := rows.Scan(&member.ID, &member.Avatar, &member.Username); err != nil {
 			return room, err
 		}
 		room.Members = append(room.Members, member)
