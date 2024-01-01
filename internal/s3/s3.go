@@ -39,9 +39,6 @@ func InitS3Session() {
 
 func UploadImage(image []byte, filename string) (string, error) {
 	filetype := http.DetectContentType(image)
-	if filetype != "image/jpeg" && filetype != "image/png" {
-		return "", fmt.Errorf("Invalid file type")
-	}
 	fileBytes := bytes.NewReader(image)
 	fileSize := int64(len(image))
 	logger.Info("[S3] Uploading image " + filename)
