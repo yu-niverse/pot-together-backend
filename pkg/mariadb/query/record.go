@@ -110,7 +110,7 @@ func GetRecordDetail(recordID int) (RecordDetail, error) {
 		INNER JOIN user u ON r.user_id = u.id
 		WHERE r.id = ?`
 	var record RecordDetail
-	err = mariadb.DB.QueryRow(query, recordID).Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
+	err = mariadb.DB.QueryRow(query, recordID).Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status, &record.Username)
 	if err != nil {
 		return RecordDetail{}, err
 	}
@@ -140,7 +140,7 @@ func GetRoomRecords(roomID int) ([]RecordDetail, error) {
 	var records []RecordDetail
 	for rows.Next() {
 		var record RecordDetail
-		err = rows.Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
+		err = rows.Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status, &record.Username)
 		if err != nil {
 			return nil, err
 		}
