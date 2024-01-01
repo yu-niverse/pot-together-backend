@@ -22,6 +22,7 @@ type Record struct {
 
 type RecordDetail struct {
 	ID              int    `json:"recordID"`
+	Username        string `json:"username"`
 	Image           string `json:"image"`
 	Caption         string `json:"caption"`
 	Interval        int    `json:"interval"`
@@ -50,7 +51,7 @@ func CreateRecord(record Record) (int, error) {
 
 func UpdateRecord(record Record) error {
 	// check if record exists
-	query := `SELECT id FROM record WHERE id = ? AND status = 0`
+	query := `SELECT id FROM record WHERE id = ?`
 	err := mariadb.DB.QueryRow(query, record.ID).Scan(&record.ID)
 	if err != nil {
 		logger.Warn("Invalid recordID: " + strconv.Itoa(record.ID))
@@ -71,9 +72,10 @@ func UpdateRecord(record Record) error {
 
 func GetUserRecords(userID int) ([]RecordDetail, error) {
 	query := `
-		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status
+		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status, u.username
 		FROM record r
 		INNER JOIN ingredient i ON r.ingredient_id = i.id
+		INNER JOIN user u ON r.user_id = u.id
 		WHERE r.user_id = ?
 		ORDER BY status DESC`
 	rows, err := mariadb.DB.Query(query, userID)
@@ -84,7 +86,7 @@ func GetUserRecords(userID int) ([]RecordDetail, error) {
 	var records []RecordDetail
 	for rows.Next() {
 		var record RecordDetail
-		err = rows.Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
+		err = rows.Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status, &record.Username)
 		if err != nil {
 			return nil, err
 		}
@@ -102,9 +104,10 @@ func GetRecordDetail(recordID int) (RecordDetail, error) {
 		return RecordDetail{}, err
 	}
 	query = `
-		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status
+		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status, u.username
 		FROM record r
 		INNER JOIN ingredient i ON r.ingredient_id = i.id
+		INNER JOIN user u ON r.user_id = u.id
 		WHERE r.id = ?`
 	var record RecordDetail
 	err = mariadb.DB.QueryRow(query, recordID).Scan(&record.ID, &record.Image, &record.Caption, &record.Interval, &record.FinishTime, &record.IngredientID, &record.IngredientName, &record.IngredientImage, &record.Interrupt, &record.Status)
@@ -123,9 +126,10 @@ func GetRoomRecords(roomID int) ([]RecordDetail, error) {
 		return nil, err
 	}
 	query = `
-		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status
+		SELECT r.id, r.image, r.caption, r.time_interval, UNIX_TIMESTAMP(r.finish_time), r.ingredient_id, i.name, i.image, r.interrupt, r.status, u.username
 		FROM record r
 		INNER JOIN ingredient i ON r.ingredient_id = i.id
+		INNER JOIN user u ON r.user_id = u.id
 		WHERE r.room_id = ?
 		ORDER BY status DESC`
 	rows, err := mariadb.DB.Query(query, roomID)
